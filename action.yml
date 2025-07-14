@@ -1,4 +1,4 @@
-name: 'WireGuard SSH'
+name: 'SSH over WireGuard'
 description: >-
   Establish secure encrypted connection to remote server via WireGuard VPN and
   execute SSH commands or SCP file transfers
