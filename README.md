@@ -226,21 +226,6 @@ jobs:
 ### Common Issues
 
 1. **WireGuard installation fails**: This is common in containerized environments. The action handles this gracefully by installing wireguard-tools only.
-
 2. **VPN connection timeout**: Check that the WireGuard server is running and the endpoint is correct.
-
 3. **SSH host key verification failed**: Ensure the SSH host key is correctly formatted and matches the server.
-
 4. **Permission denied**: Verify that the SSH private key format is correct and the user has appropriate permissions.
-
-## License
-
-This project is available under the MIT License. See the LICENSE file for more details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Author
-
-Created by [Tomachi](https://github.com/book000)
