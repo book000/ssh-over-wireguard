@@ -1,0 +1,264 @@
+name: 'WireGuard SSH'
+description: >-
+  Establish secure encrypted connection to remote server via WireGuard VPN and
+  execute SSH commands or SCP file transfers
+author: 'Tomachi'
+branding:
+  icon: 'link'
+  color: 'blue'
+
+inputs:
+  operation:
+    description: 'Operation type: ssh (execute command) or scp (file transfer)'
+    required: false
+    default: 'ssh'
+
+  command:
+    description: >-
+      Command to execute on the remote server (only used when operation=ssh)
+    required: false
+    default: 'hostname && whoami && pwd'
+
+  scp-source:
+    description: 'Source path for SCP operation (only used when operation=scp)'
+    required: false
+
+  scp-destination:
+    description: >-
+      Destination path for SCP operation (only used when operation=scp)
+    required: false
+
+  scp-direction:
+    description: >-
+      SCP direction: upload (local to remote) or download (remote to local)
+      (only used when operation=scp)
+    required: false
+    default: 'upload'
+
+  ping-check:
+    description: 'Enable ping connectivity test before SSH/SCP operations'
+    required: false
+    default: 'true'
+
+  # WireGuard Configuration
+  wireguard-private-key:
+    description: 'WireGuard client private key'
+    required: true
+
+  wireguard-address:
+    description: 'WireGuard client VPN address (e.g., 10.0.0.2/24)'
+    required: true
+
+  wireguard-dns:
+    description: 'DNS server address (e.g., 1.1.1.1)'
+    required: false
+    default: '1.1.1.1'
+
+  wireguard-peer-public-key:
+    description: 'WireGuard server public key'
+    required: true
+
+  wireguard-preshared-key:
+    description: 'WireGuard preshared key (optional security enhancement)'
+    required: false
+
+  wireguard-endpoint:
+    description: 'WireGuard server endpoint (e.g., server.com:51820)'
+    required: true
+
+  wireguard-allowed-ips:
+    description: 'Allowed IPs for WireGuard (e.g., 10.0.0.0/24)'
+    required: true
+
+  # SSH Configuration
+  ssh-private-key:
+    description: 'SSH private key for authentication'
+    required: true
+
+  ssh-user:
+    description: 'SSH username'
+    required: true
+
+  ssh-hostname:
+    description: 'SSH hostname alias for connection'
+    required: true
+
+  ssh-host-ip:
+    description: 'SSH server IP address within VPN'
+    required: true
+
+  ssh-host-key:
+    description: 'SSH server host key for verification'
+    required: true
+
+  ssh-port:
+    description: 'SSH port number'
+    required: false
+    default: '22'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        # Validate SCP operation inputs
+        if [ "${{ inputs.operation }}" = "scp" ]; then
+          if [ -z "${{ inputs.scp-source }}" ] || \
+             [ -z "${{ inputs.scp-destination }}" ]; then
+            echo "Error: scp-source and scp-destination are required" \
+                 "when operation=scp"
+            exit 1
+          fi
+        fi
+
+        echo "✅ Input validation passed"
+
+    - name: Install WireGuard
+      shell: bash
+      run: |
+        sudo apt-get update
+        
+        # Fix potential package conflicts with Docker/containerd
+        # This is often needed in GitHub Actions runners
+        sudo apt-get install -y --fix-broken
+        
+        # Install WireGuard tools first (always works)
+        sudo apt-get install -y wireguard-tools
+        
+        # Try to install full WireGuard package with conflict resolution
+        if ! sudo apt-get install -y wireguard; then
+          echo "⚠️  Full WireGuard package installation failed"
+          echo "   This is common in containerized environments like GitHub Actions"
+          echo "   Continuing with wireguard-tools only..."
+        else
+          echo "✅ Full WireGuard package installed successfully"
+        fi
+
+    - name: Setup WireGuard configuration
+      shell: bash
+      run: |
+        # Create WireGuard config directory
+        sudo mkdir -p /etc/wireguard
+
+        # Create WireGuard configuration file
+        sudo tee /etc/wireguard/wg0.conf > /dev/null <<EOF
+        [Interface]
+        PrivateKey = ${{ inputs.wireguard-private-key }}
+        Address = ${{ inputs.wireguard-address }}
+        DNS = ${{ inputs.wireguard-dns }}
+
+        [Peer]
+        PublicKey = ${{ inputs.wireguard-peer-public-key }}
+        EOF
+
+        # Add PresharedKey if provided (optional security enhancement)
+        if [ -n "${{ inputs.wireguard-preshared-key }}" ]; then
+          echo "PresharedKey = ${{ inputs.wireguard-preshared-key }}" \
+            | sudo tee -a /etc/wireguard/wg0.conf > /dev/null
+        fi
+
+        # Add remaining peer configuration
+        sudo tee -a /etc/wireguard/wg0.conf > /dev/null <<EOF
+        Endpoint = ${{ inputs.wireguard-endpoint }}
+        AllowedIPs = ${{ inputs.wireguard-allowed-ips }}
+        PersistentKeepalive = 25
+        EOF
+
+        # Set proper permissions
+        sudo chmod 600 /etc/wireguard/wg0.conf
+
+        # Enable IP forwarding (if needed)
+        echo 'net.ipv4.ip_forward = 1' | sudo tee -a /etc/sysctl.conf
+        sudo sysctl -p
+
+    - name: Start WireGuard VPN
+      shell: bash
+      run: |
+        # Start WireGuard interface
+        sudo wg-quick up wg0
+
+        # Show WireGuard status
+        sudo wg show
+
+        # Show IP configuration
+        ip addr show wg0
+
+    - name: Setup SSH Configuration
+      shell: bash
+      run: |
+        # Set up SSH config for the hostname
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+
+        # Add SSH config entry for the hostname
+        cat >> ~/.ssh/config <<EOF
+        Host ${{ inputs.ssh-hostname }}
+          HostName ${{ inputs.ssh-host-ip }}
+          User ${{ inputs.ssh-user }}
+          Port ${{ inputs.ssh-port }}
+          IdentityFile /tmp/id_rsa
+        EOF
+        chmod 600 ~/.ssh/config
+
+    - name: Setup SSH key
+      shell: bash
+      run: |
+        # Create SSH directory
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+
+        # Add SSH private key
+        echo "${{ inputs.ssh-private-key }}" > /tmp/id_rsa
+        chmod 600 /tmp/id_rsa
+
+        # Add server host key to known_hosts for secure connection
+        # Format: hostname,ip ssh-key-type ssh-key-data
+        HOST_ENTRY="${{ inputs.ssh-hostname }},${{ inputs.ssh-host-ip }}"
+        echo "$HOST_ENTRY ${{ inputs.ssh-host-key }}" >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+
+    - name: Test VPN connectivity
+      shell: bash
+      if: ${{ inputs.ping-check == 'true' }}
+      run: |
+        # Test ping to server through VPN
+        ping -c 3 ${{ inputs.ssh-host-ip }}
+
+    - name: Execute SSH command
+      shell: bash
+      if: ${{ inputs.operation == 'ssh' }}
+      run: |
+        # Execute command on remote server via SSH through VPN
+        ssh ${{ inputs.ssh-hostname }} "${{ inputs.command }}"
+
+    - name: SCP Upload (Local to Remote)
+      shell: bash
+      if: ${{ inputs.operation == 'scp' && inputs.scp-direction == 'upload' }}
+      run: |
+        # Upload file from local to remote
+        echo "Uploading file from local to remote..."
+        scp "${{ inputs.scp-source }}" \
+          ${{ inputs.ssh-hostname }}:"${{ inputs.scp-destination }}"
+
+    - name: SCP Download (Remote to Local)
+      shell: bash
+      if: ${{ inputs.operation == 'scp' && inputs.scp-direction == 'download' }}
+      run: |
+        # Download file from remote to local
+        echo "Downloading file from remote to local..."
+        scp ${{ inputs.ssh-hostname }}:"${{ inputs.scp-source }}" \
+          "${{ inputs.scp-destination }}"
+
+    - name: Cleanup
+      shell: bash
+      if: always()
+      run: |
+        # Stop WireGuard interface
+        sudo wg-quick down wg0 || true
+
+        # Remove SSH key
+        rm -f /tmp/id_rsa
+
+        # Remove SSH config
+        rm -f ~/.ssh/config
