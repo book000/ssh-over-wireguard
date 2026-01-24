@@ -13,8 +13,14 @@
 - 前提・仮定・不確実性を明示し、仮定を事実のように扱わない。
 
 ## プロジェクト概要
-- 目的: A GitHub Action that establishes secure encrypted connection to remote servers via WireGuard VPN and executes SSH commands or SCP file transfers.
-- 主な機能: 🔒 **Secure VPN Connection**: Establishes WireGuard VPN tunnel for secure communication / 🖥️ **SSH Command Execution**: Execute commands on remote servers through the VPN / 📁 **SCP File Transfer**: Upload and download files securely via SCP
+GitHub Action establishing secure WireGuard VPN tunnel for SSH command execution and SCP file transfers in CI/CD workflows.
+
+### 技術スタック
+- **言語**: Bash/Shell
+- **フレームワーク**: G, i, t, H, u, b,  , A, c, t, i, o, n, s
+- **主要な依存関係**:
+  - WireGuard
+  - OpenSSH
 
 ## 重要ルール
 - 会話言語: 日本語
@@ -43,25 +49,42 @@
 - TypeScript 使用時は `skipLibCheck` で回避しない。
 - 関数やインターフェースには docstring（JSDoc など）を記載する。
 
+### コーディング規約
+- **format**: GitHub Actions YAML
+- **note**: Pure action definition, no source code compilation
+
 ## 相談ルール
 - Codex CLI: 実装レビュー、局所設計、整合性確認に使う。
 - Gemini CLI: 外部仕様や最新情報の確認に使う。
 - 他エージェントの指摘は黙殺せず、採用または理由を明記して不採用とする。
 
-## 開発コマンド
+### 開発コマンド
 ```bash
-# README を確認してください
+# install
+N/A (GitHub Action)
+
 ```
 
-## アーキテクチャと主要ファイル
+### プロジェクト構造
+
+**主要ディレクトリ:**
+- `root (action definition)`
+
+**重要ファイル:**
+- `action.yml (action definition)`
+- `README.md`
+- `README-ja.md`
 
 ## 実装パターン
+- 既存のコードパターンに従う。
+- プロジェクト固有の実装ガイドラインがある場合はそれに従う。
 
 ## テスト
 - 方針: 変更内容に応じてテストを追加する。
 
 ## ドキュメント更新ルール
 - 更新タイミング: 実装確定後、同一コミットまたは追加コミットで更新する。
+- README、API ドキュメント、コメント等は常に最新状態を保つ。
 
 ## 作業チェックリスト
 
@@ -92,3 +115,18 @@
 6. PR 本文の崩れがないことを確認する。
 
 ## リポジトリ固有
+- **type**: GitHub Action (reusable workflow)
+**operations:**
+  - SSH (command execution)
+  - SCP (upload/download files)
+**features:**
+  - WireGuard VPN tunnel establishment
+  - SSH host key verification
+  - Optional ping connectivity test
+  - Automatic cleanup and key removal
+  - Optional preshared key support
+- **inputs**: {'wireguard': ['private-key', 'address', 'peer-public-key', 'endpoint', 'allowed-ips', 'preshared-key', 'dns'], 'ssh': ['private-key', 'user', 'hostname', 'host-ip', 'host-key', 'port'], 'operation': ['ssh', 'scp'], 'scp': ['source', 'destination', 'direction']}
+**security:**
+  - All keys stored as GitHub Secrets
+  - Host key verification mandatory
+  - Enhanced header support

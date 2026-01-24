@@ -1,8 +1,7 @@
 # GitHub Copilot Instructions
 
 ## プロジェクト概要
-- 目的: A GitHub Action that establishes secure encrypted connection to remote servers via WireGuard VPN and executes SSH commands or SCP file transfers.
-- 主な機能: 🔒 **Secure VPN Connection**: Establishes WireGuard VPN tunnel for secure communication / 🖥️ **SSH Command Execution**: Execute commands on remote servers through the VPN / 📁 **SCP File Transfer**: Upload and download files securely via SCP
+GitHub Action establishing secure WireGuard VPN tunnel for SSH command execution and SCP file transfers in CI/CD workflows.
 
 ## 共通ルール
 - 会話は日本語で行う。
@@ -12,7 +11,8 @@
 - 既存のプロジェクトルールがある場合はそれを優先する。
 
 ## 技術スタック
-- パッケージマネージャー: pnpm 優先（ロックファイルに従う）。
+- 言語: Bash/Shell
+- パッケージマネージャー: pnpm 優先（ロックファイルに従う）
 
 ## コーディング規約
 - フォーマット: 既存設定（ESLint / Prettier / formatter）に従う。
@@ -23,9 +23,11 @@
 - TypeScript 使用時は strict 前提とし、`skipLibCheck` で回避しない。
 - 関数やインターフェースには docstring（JSDoc など）を記載する。
 
-## 開発コマンド
+### 開発コマンド
 ```bash
-# README を確認してください
+# install
+N/A (GitHub Action)
+
 ```
 
 ## テスト方針
@@ -36,5 +38,22 @@
 - ログに機密情報を出力しない。
 
 ## ドキュメント更新
+- 実装確定後、同一コミットまたは追加コミットで更新する。
+- README、API ドキュメント、コメント等は常に最新状態を保つ。
 
 ## リポジトリ固有
+- **type**: GitHub Action (reusable workflow)
+**operations:**
+  - SSH (command execution)
+  - SCP (upload/download files)
+**features:**
+  - WireGuard VPN tunnel establishment
+  - SSH host key verification
+  - Optional ping connectivity test
+  - Automatic cleanup and key removal
+  - Optional preshared key support
+- **inputs**: {'wireguard': ['private-key', 'address', 'peer-public-key', 'endpoint', 'allowed-ips', 'preshared-key', 'dns'], 'ssh': ['private-key', 'user', 'hostname', 'host-ip', 'host-key', 'port'], 'operation': ['ssh', 'scp'], 'scp': ['source', 'destination', 'direction']}
+**security:**
+  - All keys stored as GitHub Secrets
+  - Host key verification mandatory
+  - Enhanced header support

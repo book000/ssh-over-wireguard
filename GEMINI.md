@@ -15,8 +15,14 @@
 - 日本語と英数字の間には半角スペースを入れる。
 
 ## プロジェクト概要
-- 目的: A GitHub Action that establishes secure encrypted connection to remote servers via WireGuard VPN and executes SSH commands or SCP file transfers.
-- 主な機能: 🔒 **Secure VPN Connection**: Establishes WireGuard VPN tunnel for secure communication / 🖥️ **SSH Command Execution**: Execute commands on remote servers through the VPN / 📁 **SCP File Transfer**: Upload and download files securely via SCP
+GitHub Action establishing secure WireGuard VPN tunnel for SSH command execution and SCP file transfers in CI/CD workflows.
+
+### 技術スタック
+- **言語**: Bash/Shell
+- **フレームワーク**: G, i, t, H, u, b,  , A, c, t, i, o, n, s
+- **主要な依存関係**:
+  - WireGuard
+  - OpenSSH
 
 ## コーディング規約
 - フォーマット: 既存設定（ESLint / Prettier / formatter）に従う。
@@ -24,9 +30,11 @@
 - コメント言語: 日本語
 - エラーメッセージ: 英語
 
-## 開発コマンド
+### 開発コマンド
 ```bash
-# README を確認してください
+# install
+N/A (GitHub Action)
+
 ```
 
 ## 注意事項
@@ -35,3 +43,18 @@
 - 既存のプロジェクトルールがある場合はそれを優先する。
 
 ## リポジトリ固有
+- **type**: GitHub Action (reusable workflow)
+**operations:**
+  - SSH (command execution)
+  - SCP (upload/download files)
+**features:**
+  - WireGuard VPN tunnel establishment
+  - SSH host key verification
+  - Optional ping connectivity test
+  - Automatic cleanup and key removal
+  - Optional preshared key support
+- **inputs**: {'wireguard': ['private-key', 'address', 'peer-public-key', 'endpoint', 'allowed-ips', 'preshared-key', 'dns'], 'ssh': ['private-key', 'user', 'hostname', 'host-ip', 'host-key', 'port'], 'operation': ['ssh', 'scp'], 'scp': ['source', 'destination', 'direction']}
+**security:**
+  - All keys stored as GitHub Secrets
+  - Host key verification mandatory
+  - Enhanced header support

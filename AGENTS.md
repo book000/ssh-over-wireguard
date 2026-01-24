@@ -25,3 +25,18 @@
 - ログに機密情報を出力しない。
 
 ## リポジトリ固有
+- **type**: GitHub Action (reusable workflow)
+**operations:**
+  - SSH (command execution)
+  - SCP (upload/download files)
+**features:**
+  - WireGuard VPN tunnel establishment
+  - SSH host key verification
+  - Optional ping connectivity test
+  - Automatic cleanup and key removal
+  - Optional preshared key support
+- **inputs**: {'wireguard': ['private-key', 'address', 'peer-public-key', 'endpoint', 'allowed-ips', 'preshared-key', 'dns'], 'ssh': ['private-key', 'user', 'hostname', 'host-ip', 'host-key', 'port'], 'operation': ['ssh', 'scp'], 'scp': ['source', 'destination', 'direction']}
+**security:**
+  - All keys stored as GitHub Secrets
+  - Host key verification mandatory
+  - Enhanced header support
