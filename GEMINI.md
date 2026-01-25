@@ -35,4 +35,4 @@ GitHub Actions のワークフロー定義ファイルが開発・テストの�
 
 ## リポジトリ固有
 - `runs.using: 'composite'` を使用しているため、各ステップで `shell: bash` を明示する必要があります。
-- 依存パッケージ (`wireguard-tools`, `openssh-client` 等) のインストール手順が含まれています。
+- WireGuard 関連パッケージ (`wireguard-tools`/`wireguard`) のインストール手順が含まれています。
