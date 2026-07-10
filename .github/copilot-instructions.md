@@ -1,38 +1,27 @@
 # GitHub Copilot Instructions
 
-## プロジェクト概要
-- 目的: WireGuard VPN を介してリモートサーバーに安全に接続し、SSH コマンドの実行や SCP ファイル転送を行う GitHub Action。
-- 主な機能: WireGuard 接続の確立、SSH コマンド実行、SCP ファイル転送（アップロード/ダウンロード）、接続テスト。
-- 対象ユーザー: GitHub Actions を利用する開発者。
+WireGuard VPN 経由でリモートサーバーに接続し、SSH コマンド実行や SCP 転送を行う GitHub Composite Action。実装の本体は `action.yml` の `runs.steps` に書かれた Bash スクリプトである。レビュー時は以下を重点的に確認する。
 
-## 共通ルール
-- 会話は日本語で行う。
-- PR とコミットは Conventional Commits に従う。
-- 日本語と英数字の間には半角スペースを入れる。
-- コード内のコメントは日本語で記載する。
+## セキュリティ (最重要)
+- WireGuard/SSH の秘密鍵・プリシェアードキー・ホストキー等の認証情報がハードコードされていないか。値は必ず `inputs` 経由で受け取る。
+- 秘密鍵やパスワードが `echo` やコマンド出力でログに露出していないか。`sudo tee` で機密を書き込む際に標準出力へ漏れていないか (`> /dev/null` の付与を確認)。
+- `/tmp/id_rsa` や `~/.ssh/config`、`/etc/wireguard/wg0.conf` などの秘密情報を含むファイルに適切なパーミッション (`chmod 600`) が設定されているか。
+- SSH ホストキー検証を無効化していないか (`StrictHostKeyChecking=no` の追加や `known_hosts` の省略は不可)。MITM 対策として `ssh-host-key` による検証を維持すること。
+- `Cleanup` ステップで秘密鍵ファイルと VPN 接続が確実に破棄されるか (`if: always()` の維持)。
 
-## 技術スタック
-- 言語: Bash (GitHub Actions Composite Action)
-- ツール: WireGuard (wireguard-tools), OpenSSH
+## Composite Action の規約
+- 各 `run` ステップに `shell: bash` が明示されているか。
+- `${{ inputs.* }}` を含む Bash はコマンドインジェクションに注意する。ユーザー入力を展開してコマンド実行する箇所 (`command`、`scp-source` 等) の扱いを確認する。
+- 新規 `inputs` はケバブケース (例: `ssh-host-ip`)。`required` と `default` の指定が実際の利用と整合しているか。
+- WireGuard セットアップは `sudo` 前提。権限や `wg-quick` の失敗時ハンドリングを確認する。
 
-## 開発コマンド
-このリポジトリは GitHub Composite Action であり、標準的なパッケージマネージャーによるインストールやビルドコマンドはありません。
-動作確認は GitHub Actions のワークフロー上で行います。
+## 整合性
+- `action.yml` の `inputs` を追加・変更・削除した PR では、`README.md` と `README-ja.md` の入力パラメータ表も更新されているか。
+- 条件付きステップ (`if:` による `operation`/`scp-direction` の分岐) が新しい入力と矛盾しないか。
 
-## テスト方針
-- 手動または自動の GitHub Actions ワークフローによる結合テスト。
-- 接続テスト機能 (`ping-check`) による疎通確認。
+## フラグ不要な既知パターン
+- WireGuard フルパッケージのインストール失敗を握りつぶして `wireguard-tools` のみで続行する処理は意図的な設計 (コンテナ環境向け)。バグとして指摘しない。
+- ステータス表示の絵文字 (✅ / ⚠️ 等) はスタイルとして許容されている。
 
-## セキュリティ / 機密情報
-- WireGuard の秘密鍵や SSH の秘密鍵などの認証情報をコードに含めない。
-- GitHub Secrets を使用して管理する。
-- ログに秘密鍵やパスワードを出力しない。
-
-## ドキュメント更新
-- `README.md`
-- `README-ja.md`
-- `action.yml` (入力パラメータの変更時)
-
-## リポジトリ固有
-- `action.yml` がエントリポイントです。
-- composite action として実装されており、`steps` 内で `shell: bash` を使用してコマンドを実行しています。
+## コメント
+- レビューコメント・指摘は日本語で行う。日本語と英数字の間には半角スペースを入れる。
