@@ -28,11 +28,14 @@ WireGuard VPN を介してリモートサーバーに安全に接続し、SSH �
 - 日本語と英数字の間には半角スペースを挿入する
 - エラーメッセージに絵文字が含まれる場合は、全体で絵文字を統一する
 - docstring は日本語で記載する
+- `inputs` の命名はケバブケース (例: `ssh-host-ip`) に統一する
+- Composite Action のため、各ステップに `shell: bash` を明示する
+- WireGuard のセットアップ (`wg-quick`、`/etc/wireguard` への書き込み等) には `sudo` 権限が必要である前提でコマンドを書く
+- 実行環境は Linux (GitHub Hosted Runner) を想定する
 
-## 相談ルール
-- Codex CLI: 実装レビュー、局所設計、整合性確認
-- Gemini CLI: 外部仕様、最新情報確認
-- 指摘への対応: 信頼度スコア 50 以上の指摘には必ず対応する
+## セキュリティ / 機密情報
+- WireGuard/SSH の秘密鍵やプリシェアードキーなどの認証情報をコミットしない。呼び出し側は GitHub Secrets で管理する
+- ログに秘密鍵・パスワード等の機密情報を出力しない
 
 ## 開発コマンド
 このリポジトリは GitHub Composite Action であり、特定のビルドコマンドはありません。
@@ -71,4 +74,3 @@ WireGuard VPN を介してリモートサーバーに安全に接続し、SSH �
 2. PR 本文が最新状態のみを網羅していることを確認する
 3. `gh pr checks <PR ID> --watch` で CI を確認する
 4. Copilot レビューに対応し、コメントに返信する
-5. Codex のコードレビューを実施し、指摘対応を行う
