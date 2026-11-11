@@ -2,6 +2,8 @@
 
 A GitHub Action that establishes secure encrypted connection to remote servers via WireGuard VPN and executes SSH commands or SCP file transfers.
 
+A Japanese translation is available in [README-ja.md](README-ja.md).
+
 ## Features
 
 - 🔒 **Secure VPN Connection**: Establishes WireGuard VPN tunnel for secure communication
@@ -146,6 +148,8 @@ secrets:
   SSH_HOST_KEY: "ssh-rsa AAAAB3NzaC1yc2EAAAA... your-host-key"
 ```
 
+`SSH_HOST_KEY` is the server's public host key in `<key-type> <base64-key>` form (the same part as in a `known_hosts` line after the host field, e.g. the output of `ssh-keyscan -t ed25519 <host>` without the leading host name). The action prefixes it with `<ssh-hostname>,<ssh-host-ip>` when writing `~/.ssh/known_hosts`.
+
 ### Best Practices
 
 1. **Use strong keys**: Generate SSH and WireGuard keys with appropriate lengths
@@ -176,7 +180,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Build application
       run: |

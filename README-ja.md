@@ -2,6 +2,8 @@
 
 WireGuard VPN 経由でリモートサーバーに安全な暗号化接続を確立し、SSH コマンドの実行や SCP ファイル転送を行う GitHub Action です。
 
+英語版は [README.md](README.md) です。
+
 ## 機能
 
 - 🔒 **セキュアな VPN 接続**: 安全な通信のための WireGuard VPN トンネルを確立
@@ -146,6 +148,8 @@ secrets:
   SSH_HOST_KEY: "ssh-rsa AAAAB3NzaC1yc2EAAAA... your-host-key"
 ```
 
+`SSH_HOST_KEY` はサーバーの公開ホストキーを `<鍵タイプ> <base64 鍵>` の形式で指定します (`known_hosts` の行からホスト名のフィールドを除いた部分で、`ssh-keyscan -t ed25519 <host>` の出力からホスト名を除いたものなど)。アクションは `~/.ssh/known_hosts` への書き込み時に `<ssh-hostname>,<ssh-host-ip>` を先頭に付与します。
+
 ### ベストプラクティス
 
 1. **強力なキーを使用**: 適切な長さの SSH と WireGuard キーを生成する
@@ -176,7 +180,7 @@ jobs:
     
     steps:
     - name: コードをチェックアウト
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: アプリケーションをビルド
       run: |
