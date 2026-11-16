@@ -28,7 +28,8 @@ There is no build, lint or test tooling. Verify changes by running the action fr
 - Inputs use kebab-case (e.g. `ssh-host-ip`). Every `run` step sets `shell: bash`.
 - When you add, change or remove an input in `action.yml`, update the input tables and examples in both `README.md` and `README-ja.md`.
 - Keep host key verification: the SSH host key from `ssh-host-key` is written to `known_hosts`; never disable `StrictHostKeyChecking`.
-- Keep the `Cleanup` step with `if: always()` so the VPN, `/tmp/id_rsa` and `~/.ssh/config` are removed even on failure.
+- Keep the `Cleanup` step with `if: always()` so the VPN, the SSH private key and its temporary directory, and `~/.ssh/config` are removed even on failure.
+- Create the SSH private key with `umask 077` inside a `mktemp -d` directory; never write it to a fixed path such as `/tmp/id_rsa`.
 - Failing to install the full `wireguard` package and continuing with `wireguard-tools` only is intentional (container-like runners).
 - Never put keys in the repository or print them to logs; callers pass them through GitHub Secrets.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/); branches follow [Conventional Branch](https://conventional-branch.github.io) short form (`feat/...`, `fix/...`).

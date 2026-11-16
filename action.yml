@@ -245,28 +245,6 @@ runs:
         # Show IP configuration
         ip addr show wg0
 
-    - name: Setup SSH Configuration
-      shell: bash
-      env:
-        SSH_HOSTNAME: ${{ inputs.ssh-hostname }}
-        SSH_HOST_IP: ${{ inputs.ssh-host-ip }}
-        SSH_USER: ${{ inputs.ssh-user }}
-        SSH_PORT: ${{ inputs.ssh-port }}
-      run: |
-        # Set up SSH config for the hostname
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
-
-        # Add SSH config entry for the hostname
-        {
-          printf 'Host %s\n' "$SSH_HOSTNAME"
-          printf '  HostName %s\n' "$SSH_HOST_IP"
-          printf '  User %s\n' "$SSH_USER"
-          printf '  Port %s\n' "$SSH_PORT"
-          printf '  IdentityFile /tmp/id_rsa\n'
-        } >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
-
     - name: Setup SSH key
       id: setup-ssh-key
       shell: bash
@@ -280,9 +258,11 @@ runs:
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
 
-        # Add SSH private key (never readable by others, even briefly)
-        (umask 077; printf '%s\n' "$SSH_PRIVATE_KEY" > /tmp/id_rsa)
-        chmod 600 /tmp/id_rsa
+        # Write the SSH private key into a private (0700) unique directory,
+        # with umask 077 so the file is never readable by others
+        ssh_key_dir=$(umask 077 && mktemp -d)
+        echo "ssh-key-dir=$ssh_key_dir" >> "$GITHUB_OUTPUT"
+        (umask 077 && printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_key_dir/id_rsa")
 
         # Add server host key to known_hosts for secure connection
         # Format: hostname,ip ssh-key-type ssh-key-data
@@ -291,6 +271,29 @@ runs:
           >> ~/.ssh/known_hosts
         echo "known-hosts-entry-added=true" >> "$GITHUB_OUTPUT"
         chmod 600 ~/.ssh/known_hosts
+
+    - name: Setup SSH Configuration
+      shell: bash
+      env:
+        SSH_HOSTNAME: ${{ inputs.ssh-hostname }}
+        SSH_HOST_IP: ${{ inputs.ssh-host-ip }}
+        SSH_USER: ${{ inputs.ssh-user }}
+        SSH_PORT: ${{ inputs.ssh-port }}
+        SSH_KEY_DIR: ${{ steps.setup-ssh-key.outputs.ssh-key-dir }}
+      run: |
+        # Set up SSH config for the hostname
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+
+        # Add SSH config entry for the hostname
+        {
+          printf 'Host %s\n' "$SSH_HOSTNAME"
+          printf '  HostName %s\n' "$SSH_HOST_IP"
+          printf '  User %s\n' "$SSH_USER"
+          printf '  Port %s\n' "$SSH_PORT"
+          printf '  IdentityFile %s\n' "$SSH_KEY_DIR/id_rsa"
+        } >> ~/.ssh/config
+        chmod 600 ~/.ssh/config
 
     - name: Test VPN connectivity
       shell: bash
@@ -345,13 +348,17 @@ runs:
         SSH_HOST_IP: ${{ inputs.ssh-host-ip }}
         SSH_HOST_KEY: ${{ inputs.ssh-host-key }}
         SSH_KNOWN_HOST_ENTRY_ADDED: ${{ steps.setup-ssh-key.outputs.known-hosts-entry-added }}
+        SSH_KEY_DIR: ${{ steps.setup-ssh-key.outputs.ssh-key-dir }}
       run: |
         # Stop WireGuard interface
         sudo wg-quick down wg0 || true
         sudo rm -f /etc/wireguard/wg0.conf
 
-        # Remove SSH key
-        rm -f /tmp/id_rsa
+        # Remove SSH key and its private directory
+        if [ -n "$SSH_KEY_DIR" ]; then
+          rm -f "$SSH_KEY_DIR/id_rsa"
+          rmdir "$SSH_KEY_DIR" || true
+        fi
 
         # Remove SSH config
         rm -f ~/.ssh/config
