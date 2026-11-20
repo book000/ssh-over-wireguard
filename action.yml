@@ -100,6 +100,7 @@ runs:
   using: 'composite'
   steps:
     - name: Validate inputs
+      id: validate-inputs
       shell: bash
       env:
         OPERATION: ${{ inputs.operation }}
@@ -344,12 +345,17 @@ runs:
       shell: bash
       if: always()
       env:
+        VALIDATION_OUTCOME: ${{ steps.validate-inputs.outcome }}
         SSH_HOSTNAME: ${{ inputs.ssh-hostname }}
         SSH_HOST_IP: ${{ inputs.ssh-host-ip }}
         SSH_HOST_KEY: ${{ inputs.ssh-host-key }}
         SSH_KNOWN_HOST_ENTRY_ADDED: ${{ steps.setup-ssh-key.outputs.known-hosts-entry-added }}
         SSH_KEY_DIR: ${{ steps.setup-ssh-key.outputs.ssh-key-dir }}
       run: |
+        if [ "$VALIDATION_OUTCOME" = "failure" ]; then
+          exit 0
+        fi
+
         # Stop WireGuard interface
         sudo wg-quick down wg0 || true
         sudo rm -f /etc/wireguard/wg0.conf

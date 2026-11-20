@@ -237,6 +237,10 @@ jobs:
           sudo systemctl status myapp
 ```
 
+## Testing
+
+Install Python 3 and PyYAML, then run `python3 -m unittest discover -s tests -v` to check input validation and operation selection. Full integration verification requires a Linux GitHub Actions runner and a working WireGuard and SSH endpoint.
+
 ## Troubleshooting
 
 ### Common Issues
