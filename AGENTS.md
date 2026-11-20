@@ -16,11 +16,12 @@ Guidance for AI coding agents and contributors. `CLAUDE.md` imports this file, a
 
 ## Commands
 
-There is no build, lint or test tooling. Verify changes by running the action from a GitHub Actions workflow on a Linux runner (the steps use `sudo` and `apt-get`).
+Run `python -m unittest discover -s tests` for the operation selection tests; they require PyYAML. Verify integration changes by running the action from a GitHub Actions workflow on a Linux runner (the steps use `sudo` and `apt-get`).
 
 ## Structure
 
 - `action.yml`: inputs and the composite steps (validate inputs, install WireGuard, write `/etc/wireguard/wg0.conf`, start VPN, write SSH config, key and `known_hosts`, optional ping, SSH or SCP, cleanup).
+- `tests/test_operation_selection.py`: input validation and work-step selection tests.
 - `README.md`: usage, input tables and examples. `README-ja.md`: its Japanese translation.
 
 ## Conventions
