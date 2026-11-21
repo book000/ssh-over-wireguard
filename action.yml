@@ -196,6 +196,7 @@ runs:
         fi
         
     - name: Setup WireGuard configuration
+      id: setup-wireguard
       shell: bash
       env:
         WG_PRIVATE_KEY: ${{ inputs.wireguard-private-key }}
@@ -206,12 +207,18 @@ runs:
         WG_ENDPOINT: ${{ inputs.wireguard-endpoint }}
         WG_ALLOWED_IPS: ${{ inputs.wireguard-allowed-ips }}
       run: |
-        # Create WireGuard config directory
-        sudo mkdir -p /etc/wireguard
+        # Use an action-owned private directory and a unique interface name so
+        # a preexisting wg0 or /etc/wireguard/wg0.conf is never touched. The
+        # outputs are written first so Cleanup can remove the directory even
+        # if a later command fails.
+        wg_dir=$(umask 077 && mktemp -d)
+        wg_interface="wgsow$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
+        echo "wg-dir=$wg_dir" >> "$GITHUB_OUTPUT"
+        echo "wg-interface=$wg_interface" >> "$GITHUB_OUTPUT"
 
         # Create WireGuard configuration file. Values are written with
         # printf so they are data, never shell syntax.
-        {
+        (umask 077 && {
           printf '[Interface]\n'
           printf 'PrivateKey = %s\n' "$WG_PRIVATE_KEY"
           printf 'Address = %s\n' "$WG_ADDRESS"
@@ -225,26 +232,30 @@ runs:
           printf 'Endpoint = %s\n' "$WG_ENDPOINT"
           printf 'AllowedIPs = %s\n' "$WG_ALLOWED_IPS"
           printf 'PersistentKeepalive = 25\n'
-        } | sudo tee /etc/wireguard/wg0.conf > /dev/null
-
-        # Set proper permissions
-        sudo chmod 600 /etc/wireguard/wg0.conf
+        } > "$wg_dir/$wg_interface.conf")
 
         # Enable IP forwarding (if needed)
         echo 'net.ipv4.ip_forward = 1' | sudo tee -a /etc/sysctl.conf
         sudo sysctl -p
 
     - name: Start WireGuard VPN
+      id: start-wireguard
       shell: bash
+      env:
+        WG_DIR: ${{ steps.setup-wireguard.outputs.wg-dir }}
+        WG_INTERFACE: ${{ steps.setup-wireguard.outputs.wg-interface }}
       run: |
-        # Start WireGuard interface
-        sudo wg-quick up wg0
+        # Start WireGuard interface. wg-quick refuses to touch an interface
+        # that already exists and removes it again if bringing it up fails,
+        # so wg-started is only set once this invocation owns the interface.
+        sudo wg-quick up "$WG_DIR/$WG_INTERFACE.conf"
+        echo "wg-started=true" >> "$GITHUB_OUTPUT"
 
         # Show WireGuard status
-        sudo wg show
+        sudo wg show "$WG_INTERFACE"
 
         # Show IP configuration
-        ip addr show wg0
+        ip addr show "$WG_INTERFACE"
 
     - name: Setup SSH key
       id: setup-ssh-key
@@ -286,15 +297,15 @@ runs:
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
 
-        # Add SSH config entry for the hostname
-        {
+        # Write the SSH config entry to an action-owned file (used with
+        # ssh/scp -F) so the runner's ~/.ssh/config is never modified.
+        (umask 077 && {
           printf 'Host %s\n' "$SSH_HOSTNAME"
           printf '  HostName %s\n' "$SSH_HOST_IP"
           printf '  User %s\n' "$SSH_USER"
           printf '  Port %s\n' "$SSH_PORT"
           printf '  IdentityFile %s\n' "$SSH_KEY_DIR/id_rsa"
-        } >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
+        } > "$SSH_KEY_DIR/ssh_config")
 
     - name: Test VPN connectivity
       shell: bash
@@ -311,11 +322,12 @@ runs:
       env:
         SSH_HOSTNAME: ${{ inputs.ssh-hostname }}
         REMOTE_COMMAND: ${{ inputs.command }}
+        SSH_KEY_DIR: ${{ steps.setup-ssh-key.outputs.ssh-key-dir }}
       run: |
         # Execute command on remote server via SSH through VPN.
         # The command is passed as a single argument and is not expanded
         # locally; the remote shell interprets it.
-        ssh -- "$SSH_HOSTNAME" "$REMOTE_COMMAND"
+        ssh -F "$SSH_KEY_DIR/ssh_config" -- "$SSH_HOSTNAME" "$REMOTE_COMMAND"
 
     - name: SCP Upload (Local to Remote)
       shell: bash
@@ -324,10 +336,11 @@ runs:
         SSH_HOSTNAME: ${{ inputs.ssh-hostname }}
         SCP_SOURCE: ${{ inputs.scp-source }}
         SCP_DESTINATION: ${{ inputs.scp-destination }}
+        SSH_KEY_DIR: ${{ steps.setup-ssh-key.outputs.ssh-key-dir }}
       run: |
         # Upload file from local to remote
         echo "Uploading file from local to remote..."
-        scp -- "$SCP_SOURCE" "$SSH_HOSTNAME:$SCP_DESTINATION"
+        scp -F "$SSH_KEY_DIR/ssh_config" -- "$SCP_SOURCE" "$SSH_HOSTNAME:$SCP_DESTINATION"
 
     - name: SCP Download (Remote to Local)
       shell: bash
@@ -336,10 +349,11 @@ runs:
         SSH_HOSTNAME: ${{ inputs.ssh-hostname }}
         SCP_SOURCE: ${{ inputs.scp-source }}
         SCP_DESTINATION: ${{ inputs.scp-destination }}
+        SSH_KEY_DIR: ${{ steps.setup-ssh-key.outputs.ssh-key-dir }}
       run: |
         # Download file from remote to local
         echo "Downloading file from remote to local..."
-        scp -- "$SSH_HOSTNAME:$SCP_SOURCE" "$SCP_DESTINATION"
+        scp -F "$SSH_KEY_DIR/ssh_config" -- "$SSH_HOSTNAME:$SCP_SOURCE" "$SCP_DESTINATION"
 
     - name: Cleanup
       shell: bash
@@ -351,23 +365,30 @@ runs:
         SSH_HOST_KEY: ${{ inputs.ssh-host-key }}
         SSH_KNOWN_HOST_ENTRY_ADDED: ${{ steps.setup-ssh-key.outputs.known-hosts-entry-added }}
         SSH_KEY_DIR: ${{ steps.setup-ssh-key.outputs.ssh-key-dir }}
+        WG_DIR: ${{ steps.setup-wireguard.outputs.wg-dir }}
+        WG_INTERFACE: ${{ steps.setup-wireguard.outputs.wg-interface }}
+        WG_STARTED: ${{ steps.start-wireguard.outputs.wg-started }}
       run: |
         if [ "$VALIDATION_OUTCOME" = "failure" ]; then
           exit 0
         fi
 
-        # Stop WireGuard interface
-        sudo wg-quick down wg0 || true
-        sudo rm -f /etc/wireguard/wg0.conf
-
-        # Remove SSH key and its private directory
-        if [ -n "$SSH_KEY_DIR" ]; then
-          rm -f "$SSH_KEY_DIR/id_rsa"
-          rmdir "$SSH_KEY_DIR" || true
+        # Remove only what this invocation created. Stop the WireGuard
+        # interface only if this invocation brought it up, and do it before
+        # removing its config file.
+        if [ "$WG_STARTED" = "true" ]; then
+          sudo wg-quick down "$WG_DIR/$WG_INTERFACE.conf" || true
+        fi
+        if [ -n "$WG_DIR" ]; then
+          rm -f "$WG_DIR/$WG_INTERFACE.conf"
+          rmdir "$WG_DIR" || true
         fi
 
-        # Remove SSH config
-        rm -f ~/.ssh/config
+        # Remove SSH key, SSH config and their private directory
+        if [ -n "$SSH_KEY_DIR" ]; then
+          rm -f "$SSH_KEY_DIR/id_rsa" "$SSH_KEY_DIR/ssh_config"
+          rmdir "$SSH_KEY_DIR" || true
+        fi
 
         if [ "$SSH_KNOWN_HOST_ENTRY_ADDED" = "true" ] && [ -f ~/.ssh/known_hosts ]; then
             SSH_KNOWN_HOST_ENTRY=$(printf '%s' "$SSH_HOSTNAME,$SSH_HOST_IP $SSH_HOST_KEY")

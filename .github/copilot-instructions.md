@@ -5,7 +5,7 @@ Follow `AGENTS.md` at the repository root for project guidance. Review checklist
 ## Security (highest priority)
 
 - No hard-coded credentials; WireGuard/SSH keys and the host key come only from `inputs`.
-- Secrets must not leak to logs (`echo`, command output, `sudo tee` without `> /dev/null`), and files holding them keep `chmod 600` (`/tmp/id_rsa`, `~/.ssh/config`, `/etc/wireguard/wg0.conf`).
+- Secrets must not leak to logs (`echo`, command output, `sudo tee` without `> /dev/null`), and files holding them are created with `umask 077` inside `mktemp -d` directories (the SSH private key, the action-owned SSH config and the WireGuard config), never at fixed paths such as `/tmp/id_rsa`, `~/.ssh/config` or `/etc/wireguard/wg0.conf`.
 - SSH host key verification stays enabled (no `StrictHostKeyChecking=no`, `known_hosts` entry from `ssh-host-key` kept).
 - The `Cleanup` step keeps `if: always()`.
 

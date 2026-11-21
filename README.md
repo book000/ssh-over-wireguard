@@ -11,7 +11,7 @@ A Japanese translation is available in [README-ja.md](README-ja.md).
 - 📁 **SCP File Transfer**: Upload and download files securely via SCP
 - 🔍 **Connectivity Testing**: Optional ping test to verify VPN connectivity
 - 🛡️ **Security Features**: Host key verification, proper permission handling
-- 🧹 **Automatic Cleanup**: Tears down the VPN and removes the WireGuard configuration, SSH private key, SSH configuration, and host key entry added by the action, even on failure
+- 🧹 **Automatic Cleanup**: Tears down the VPN and removes the WireGuard configuration, SSH private key, SSH configuration, and host key entry added by the action, even on failure. Existing WireGuard and SSH configuration on the runner (`/etc/wireguard/`, `~/.ssh/config`) is neither modified nor removed
 
 ## Usage
 
