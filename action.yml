@@ -234,9 +234,13 @@ runs:
           printf 'PersistentKeepalive = 25\n'
         } > "$wg_dir/$wg_interface.conf")
 
-        # Enable IP forwarding (if needed)
-        echo 'net.ipv4.ip_forward = 1' | sudo tee -a /etc/sysctl.conf
-        sudo sysctl -p
+        previous_ip_forward=$(sysctl -n net.ipv4.ip_forward)
+        case "$previous_ip_forward" in
+          0 | 1) ;;
+          *) echo "Error: unexpected IPv4 forwarding value" >&2; exit 1 ;;
+        esac
+        echo "previous-ip-forward=$previous_ip_forward" >> "$GITHUB_OUTPUT"
+        sudo sysctl -w net.ipv4.ip_forward=1
 
     - name: Start WireGuard VPN
       id: start-wireguard
@@ -368,6 +372,7 @@ runs:
         WG_DIR: ${{ steps.setup-wireguard.outputs.wg-dir }}
         WG_INTERFACE: ${{ steps.setup-wireguard.outputs.wg-interface }}
         WG_STARTED: ${{ steps.start-wireguard.outputs.wg-started }}
+        PREVIOUS_IP_FORWARD: ${{ steps.setup-wireguard.outputs.previous-ip-forward }}
       run: |
         if [ "$VALIDATION_OUTCOME" = "failure" ]; then
           exit 0
@@ -378,6 +383,10 @@ runs:
         # removing its config file.
         if [ "$WG_STARTED" = "true" ]; then
           sudo wg-quick down "$WG_DIR/$WG_INTERFACE.conf" || true
+        fi
+        restore_failed=false
+        if [ -n "$PREVIOUS_IP_FORWARD" ]; then
+          sudo sysctl -w "net.ipv4.ip_forward=$PREVIOUS_IP_FORWARD" || restore_failed=true
         fi
         if [ -n "$WG_DIR" ]; then
           rm -f "$WG_DIR/$WG_INTERFACE.conf"
@@ -409,4 +418,8 @@ runs:
                 }
             ' ~/.ssh/known_hosts > "$known_hosts_tmp"
             cat "$known_hosts_tmp" > ~/.ssh/known_hosts
+        fi
+
+        if [ "$restore_failed" = "true" ]; then
+          exit 1
         fi
