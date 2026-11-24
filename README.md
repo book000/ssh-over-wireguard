@@ -237,10 +237,6 @@ jobs:
           sudo systemctl status myapp
 ```
 
-## Releases
-
-Run the Release workflow with a version such as `v1.2.3` to publish the selected ref and update its major tag, including `v1` for compatible releases.
-
 ## Testing
 
 Install Python 3 and PyYAML, then run `python3 -m unittest discover -s tests -v` to check input validation and operation selection. Full integration verification requires a Linux GitHub Actions runner and a working WireGuard and SSH endpoint.
