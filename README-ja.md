@@ -192,7 +192,7 @@ jobs:
     
     steps:
     - name: コードをチェックアウト
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       
     - name: アプリケーションをビルド
       run: |
@@ -228,7 +228,21 @@ jobs:
     - name: 展開とサービス再起動
       uses: book000/ssh-over-wireguard@v1
       with:
-        # ... 同じ VPN と SSH 設定 ...
+        # WireGuard VPN 設定
+        wireguard-private-key: ${{ secrets.WG_PRIVATE_KEY }}
+        wireguard-address: "10.0.0.2/24"
+        wireguard-peer-public-key: ${{ secrets.WG_SERVER_PUBLIC_KEY }}
+        wireguard-preshared-key: ${{ secrets.WG_PRESHARED_KEY }}
+        wireguard-endpoint: "prod-server.example.com:51820"
+        wireguard-allowed-ips: "10.0.0.0/24"
+
+        # SSH 設定
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        ssh-user: "deploy"
+        ssh-hostname: "production"
+        ssh-host-ip: "10.0.0.1"
+        ssh-host-key: ${{ secrets.SSH_HOST_KEY }}
+
         operation: "ssh"
         command: |
           cd /opt/app/releases
