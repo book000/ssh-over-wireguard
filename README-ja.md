@@ -237,6 +237,10 @@ jobs:
           sudo systemctl status myapp
 ```
 
+## リリース
+
+Release ワークフローを `v1.2.3` のようなバージョンを指定して実行すると、選択した ref をリリースし、対応するメジャータグを更新します。互換性のあるリリースでは `v1` が更新されます。
+
 ## テスト
 
 Python 3 と PyYAML をインストールし、`python3 -m unittest discover -s tests -v` を実行すると、入力検証と操作の選択を確認できます。統合テストには Linux の GitHub Actions ランナーと、動作する WireGuard および SSH の接続先が必要です。
