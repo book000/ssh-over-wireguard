@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (for example, v1.2.3)
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out selected commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install test dependency
+        run: python -m pip install PyYAML==6.0.3
+      - name: Run tests
+        run: python -m unittest discover -s tests
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out selected commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Publish release and update major tag
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Error: version must be a stable semantic version such as v1.2.3" >&2
+            exit 1
+          fi
+          major="v${BASH_REMATCH[1]}"
+          git fetch origin master
+          git merge-base --is-ancestor "$RELEASE_COMMIT" FETCH_HEAD || {
+            echo "Error: selected commit is not on master" >&2
+            exit 1
+          }
+          if [ -n "$(git ls-remote --refs origin "refs/tags/$VERSION")" ]; then
+            echo "Error: release version tag already exists" >&2
+            exit 1
+          fi
+          existing_major=$(git ls-remote --refs origin "refs/tags/$major" | cut -f1)
+          if [ -n "$existing_major" ]; then
+            git fetch origin "refs/tags/$major:refs/tags/$major" --force
+            git merge-base --is-ancestor "$major^{commit}" "$RELEASE_COMMIT" || {
+              echo "Error: release would move the major tag backwards or across histories" >&2
+              exit 1
+            }
+          fi
+          git push origin "$RELEASE_COMMIT:refs/tags/$VERSION"
+          gh release create "$VERSION" --verify-tag --generate-notes
+          git push origin --force-with-lease="refs/tags/$major:$existing_major" "$RELEASE_COMMIT:refs/tags/$major"
