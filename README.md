@@ -15,13 +15,11 @@ A Japanese translation is available in [README-ja.md](README-ja.md).
 
 ## Usage
 
-The examples pin the reviewed commit `21d802e5ba57a4bf347ba18973f18752398f030c`, which includes IPv4 forwarding restoration. The existing `v1` tag predates these fixes; use this commit until a compatible release updates `v1`. A commit pin does not receive updates automatically. See [RELEASING.md](RELEASING.md) for the release process.
-
 ### Basic SSH Command Execution
 
 ```yaml
 - name: Execute SSH command through WireGuard VPN
-  uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
+  uses: book000/ssh-over-wireguard@v1
   with:
     # WireGuard Configuration
     wireguard-private-key: ${{ secrets.WG_PRIVATE_KEY }}
@@ -46,7 +44,7 @@ The examples pin the reviewed commit `21d802e5ba57a4bf347ba18973f18752398f030c`,
 
 ```yaml
 - name: Upload file through WireGuard VPN
-  uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
+  uses: book000/ssh-over-wireguard@v1
   with:
     # WireGuard Configuration
     wireguard-private-key: ${{ secrets.WG_PRIVATE_KEY }}
@@ -73,7 +71,7 @@ The examples pin the reviewed commit `21d802e5ba57a4bf347ba18973f18752398f030c`,
 
 ```yaml
 - name: Download file through WireGuard VPN
-  uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
+  uses: book000/ssh-over-wireguard@v1
   with:
     # ... WireGuard and SSH configuration same as above ...
     
@@ -204,7 +202,7 @@ jobs:
         tar -czf app.tar.gz dist/
         
     - name: Deploy through WireGuard VPN
-      uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
+      uses: book000/ssh-over-wireguard@v1
       with:
         # WireGuard VPN configuration
         wireguard-private-key: ${{ secrets.WG_PRIVATE_KEY }}
@@ -228,7 +226,7 @@ jobs:
         scp-direction: "upload"
         
     - name: Extract and restart service
-      uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
+      uses: book000/ssh-over-wireguard@v1
       with:
         # ... same VPN and SSH config ...
         operation: "ssh"
