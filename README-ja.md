@@ -15,11 +15,13 @@ WireGuard VPN 経由でリモートサーバーに安全な暗号化接続を確
 
 ## 使用方法
 
+例では IPv4 フォワーディングの復元を含むレビュー済みコミット `21d802e5ba57a4bf347ba18973f18752398f030c` に固定しています。既存の `v1` タグはこれらの修正より古いため、互換性のあるリリースで `v1` が更新されるまでこのコミットを使用してください。コミットへの固定では更新を自動的に受け取れません。リリース手順は [RELEASING.md](RELEASING.md) を参照してください。
+
 ### 基本的な SSH コマンド実行
 
 ```yaml
 - name: WireGuard VPN 経由で SSH コマンドを実行
-  uses: book000/ssh-over-wireguard@v1
+  uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
   with:
     # WireGuard 設定
     wireguard-private-key: ${{ secrets.WG_PRIVATE_KEY }}
@@ -44,7 +46,7 @@ WireGuard VPN 経由でリモートサーバーに安全な暗号化接続を確
 
 ```yaml
 - name: WireGuard VPN 経由でファイルをアップロード
-  uses: book000/ssh-over-wireguard@v1
+  uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
   with:
     # WireGuard 設定
     wireguard-private-key: ${{ secrets.WG_PRIVATE_KEY }}
@@ -71,7 +73,7 @@ WireGuard VPN 経由でリモートサーバーに安全な暗号化接続を確
 
 ```yaml
 - name: WireGuard VPN 経由でファイルをダウンロード
-  uses: book000/ssh-over-wireguard@v1
+  uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
   with:
     # ... 上記と同じ WireGuard と SSH 設定 ...
     
@@ -202,7 +204,7 @@ jobs:
         tar -czf app.tar.gz dist/
         
     - name: WireGuard VPN 経由でデプロイ
-      uses: book000/ssh-over-wireguard@v1
+      uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
       with:
         # WireGuard VPN 設定
         wireguard-private-key: ${{ secrets.WG_PRIVATE_KEY }}
@@ -226,7 +228,7 @@ jobs:
         scp-direction: "upload"
         
     - name: 展開とサービス再起動
-      uses: book000/ssh-over-wireguard@v1
+      uses: book000/ssh-over-wireguard@21d802e5ba57a4bf347ba18973f18752398f030c
       with:
         # ... 同じ VPN と SSH 設定 ...
         operation: "ssh"
